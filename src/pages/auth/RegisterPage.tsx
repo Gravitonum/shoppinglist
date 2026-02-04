@@ -30,8 +30,9 @@ export const RegisterPage: React.FC = () => {
                 const axiosError = error as { response: { data: any } };
                 console.error('Detailed registration error data:', axiosError.response.data);
             }
-            const err = error as { response?: { data?: { message?: string } } };
-            message.error(err.response?.data?.message || 'Ошибка регистрации. Попробуйте снова.');
+            const err = error as { response?: { data?: { message?: string; details?: string; error?: string } } };
+            const errorMessage = err.response?.data?.details || err.response?.data?.message || err.response?.data?.error || 'Ошибка регистрации. Попробуйте снова.';
+            message.error(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -70,6 +71,10 @@ export const RegisterPage: React.FC = () => {
                         rules={[
                             { required: true, message: 'Введите имя пользователя' },
                             { min: 3, message: 'Минимум 3 символа' },
+                            {
+                                pattern: /^[a-zA-Z][a-zA-Z0-9-]*$/,
+                                message: 'Только латинские буквы, цифры и дефис. Должно начинаться с буквы.'
+                            }
                         ]}
                     >
                         <Input
@@ -95,10 +100,11 @@ export const RegisterPage: React.FC = () => {
 
                     <Form.Item
                         name="displayName"
+                        rules={[{ required: true, message: 'Введите отображаемое имя' }]}
                     >
                         <Input
                             prefix={<IdcardOutlined />}
-                            placeholder="Отображаемое имя (опционально)"
+                            placeholder="Отображаемое имя"
                             size="large"
                         />
                     </Form.Item>

@@ -1,5 +1,5 @@
 import apiClient, { AUTH_URL, setTokens, clearTokens } from './client';
-import type { AuthResponse, RegisterRequest } from '@/types/api';
+import type { AuthResponse, RegisterRequest, ProfileAttribute } from '@/types/api';
 
 // Register new user
 export const register = async (
@@ -8,14 +8,15 @@ export const register = async (
     email?: string,
     displayName?: string
 ): Promise<AuthResponse> => {
-    const profile: Record<string, string> = {};
+    const profile: ProfileAttribute[] = [];
 
     if (email) {
-        profile.email = email;
+        profile.push({ attribute: 'email', value: email });
     }
-    if (displayName) {
-        profile.displayName = displayName;
-    }
+
+    // Always include displayName, fallback to username if not provided
+    const finalDisplayName = displayName || username;
+    profile.push({ attribute: 'displayName', value: finalDisplayName });
 
     const requestData: RegisterRequest = {
         username,

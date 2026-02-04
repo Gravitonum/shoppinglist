@@ -7,11 +7,16 @@ export interface AuthResponse {
     expires_in: number;
 }
 
+export interface ProfileAttribute {
+    attribute: string;
+    value: string;
+}
+
 export interface RegisterRequest {
     username: string;
     flow: 'password';
     value: string; // password
-    profile: Record<string, string>;
+    profile: ProfileAttribute[];
 }
 
 export interface LoginRequest {
