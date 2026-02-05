@@ -11,12 +11,14 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { shoppingListsAPI } from '@/api/entities';
 import type { ShoppingList } from '@/types/entities';
+import { AddListModal } from '@/components/lists/AddListModal';
 
 const { Title, Text } = Typography;
 
 export const ShoppingListsPage: React.FC = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const [isCreateModalVisible, setIsCreateModalVisible] = React.useState(false);
 
     // Fetch shopping lists
     const { data: lists, isLoading } = useQuery({
@@ -48,9 +50,7 @@ export const ShoppingListsPage: React.FC = () => {
     };
 
     const handleCreateList = () => {
-        // For now, just navigate to a placeholder
-        // In full implementation, would open a modal with form
-        message.info('Функция создания списка будет добавлена');
+        setIsCreateModalVisible(true);
     };
 
     if (isLoading) {
@@ -92,6 +92,7 @@ export const ShoppingListsPage: React.FC = () => {
                                 style={{
                                     borderRadius: 12,
                                     boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                                    borderTop: list.color ? `4px solid ${list.color}` : undefined
                                 }}
                                 actions={[
                                     <EditOutlined
@@ -128,6 +129,12 @@ export const ShoppingListsPage: React.FC = () => {
                     ))}
                 </Row>
             )}
+
+            <AddListModal
+                visible={isCreateModalVisible}
+                onCancel={() => setIsCreateModalVisible(false)}
+                existingLists={lists || []}
+            />
         </div>
     );
 };

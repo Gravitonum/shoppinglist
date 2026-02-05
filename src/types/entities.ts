@@ -2,21 +2,25 @@
 
 export interface User {
     id: string;
+    username?: string;
     email?: string;
+    name?: string;
     displayName?: string;
 }
 
 export interface ShoppingList {
     id: string;
-    owner?: string; // Reference to User ID
+    owner?: string | { id: string }; // Reference to User ID or object
     title?: string;
     isShared?: boolean;
+    color?: string;
+    position?: number;
 }
 
 export interface ListMember {
     id: string;
-    list?: string; // Reference to ShoppingList ID
-    user?: string; // Reference to User ID
+    list?: string | { id: string }; // Reference to ShoppingList ID
+    user?: string | { id: string }; // Reference to User ID
     role?: string; // viewer, editor, admin
     joinedAt?: string; // ISO datetime string
 }
@@ -37,20 +41,20 @@ export interface Store {
 
 export interface Item {
     id: string;
-    list?: string; // Reference to ShoppingList ID
+    list?: string | { id: string }; // Reference to ShoppingList ID
     title?: string;
     quantity?: number;
     unit?: string;
     note?: string;
-    category?: string; // Reference to Category ID
-    store?: string; // Reference to Store ID
+    category?: string | { id: string }; // Reference to Category ID
+    store?: string | { id: string }; // Reference to Store ID
     isChecked?: boolean;
     position?: number;
 }
 
 export interface TemplateList {
     id: string;
-    owner?: string; // Reference to User ID
+    owner?: string | { id: string }; // Reference to User ID
     title?: string;
     description?: string;
 }

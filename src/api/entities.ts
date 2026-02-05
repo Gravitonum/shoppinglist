@@ -25,13 +25,17 @@ export const createEntityAPI = <T>(entityName: string) => {
 
         // Update record (full replacement)
         update: async (data: T): Promise<T> => {
-            const response = await apiClient.put<T>(baseURL, data);
+            // @ts-ignore - we assume data has id
+            const id = (data as any).id;
+            const response = await apiClient.put<T>(`${baseURL}/${id}`, data);
             return response.data;
         },
 
         // Partially update record
         patch: async (data: Partial<T>): Promise<T> => {
-            const response = await apiClient.patch<T>(baseURL, data);
+            // @ts-ignore - we assume data has id
+            const id = (data as any).id;
+            const response = await apiClient.patch<T>(`${baseURL}/${id}`, data);
             return response.data;
         },
 
