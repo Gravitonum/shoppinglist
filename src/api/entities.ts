@@ -6,8 +6,8 @@ export const createEntityAPI = <T>(entityName: string) => {
 
     return {
         // Get all records
-        getAll: async (): Promise<T[]> => {
-            const response = await apiClient.get<T[]>(baseURL);
+        getAll: async (params?: Record<string, any>): Promise<T[]> => {
+            const response = await apiClient.get<T[]>(baseURL, { params });
             return response.data;
         },
 
@@ -25,6 +25,7 @@ export const createEntityAPI = <T>(entityName: string) => {
 
         // Update record (full replacement)
         update: async (data: T): Promise<T> => {
+            // Standard REST: PUT to resource URL
             // @ts-ignore - we assume data has id
             const id = (data as any).id;
             const response = await apiClient.put<T>(`${baseURL}/${id}`, data);
@@ -33,6 +34,12 @@ export const createEntityAPI = <T>(entityName: string) => {
 
         // Partially update record
         patch: async (data: Partial<T>): Promise<T> => {
+            // "Item" entity requires PATCH to collection URL (backend quirk)
+            if (entityName === 'Item') {
+                const response = await apiClient.patch<T>(`${baseURL}`, data);
+                return response.data;
+            }
+
             // @ts-ignore - we assume data has id
             const id = (data as any).id;
             const response = await apiClient.patch<T>(`${baseURL}/${id}`, data);

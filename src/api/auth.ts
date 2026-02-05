@@ -35,14 +35,19 @@ export const register = async (
 };
 
 // Login user
+export interface LoginRequest {
+    login: string;
+    password: string;
+}
 export const login = async (
-    username: string,
+    login: string,
     password: string
 ): Promise<AuthResponse> => {
     const response = await apiClient.post<AuthResponse>(
         `${AUTH_URL}/token`,
         new URLSearchParams({
-            login: username,
+            grant_type: 'password',
+            login: login,
             password: password,
         }),
         {

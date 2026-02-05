@@ -117,7 +117,12 @@ export const MainLayout: React.FC = () => {
                         })}
                     </div>
 
-                    <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                    <Dropdown
+                        menu={{ items: userMenuItems }}
+                        placement="bottomRight"
+                        trigger={['click']}
+                        getPopupContainer={(trigger) => trigger.parentElement || document.body}
+                    >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                             <Avatar icon={<UserOutlined />} />
                             <Text>{user?.displayName || user?.email || 'Пользователь'}</Text>

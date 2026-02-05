@@ -12,18 +12,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { shoppingListsAPI } from '@/api/entities';
 import type { ShoppingList } from '@/types/entities';
 import { AddListModal } from '@/components/lists/AddListModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 const { Title, Text } = Typography;
 
 export const ShoppingListsPage: React.FC = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const queryClient = useQueryClient();
     const [isCreateModalVisible, setIsCreateModalVisible] = React.useState(false);
 
     // Fetch shopping lists
     const { data: lists, isLoading } = useQuery({
-        queryKey: ['shoppingLists'],
-        queryFn: () => shoppingListsAPI.getAll(),
+        queryKey: ['shoppingLists', user?.id],
+        queryFn: () => shoppingListsAPI.getAll({ owner: user?.id }),
+        enabled: !!user?.id,
     });
 
     // Delete mutation

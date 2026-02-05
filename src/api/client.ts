@@ -51,6 +51,11 @@ const onTokenRefreshed = (token: string) => {
     refreshSubscribers = [];
 };
 
+const onTokenRefreshFailed = () => {
+    refreshSubscribers = [];
+    isRefreshing = false;
+};
+
 // Refresh token function
 const refreshAccessToken = async (): Promise<string> => {
     const refreshToken = getRefreshToken();
@@ -60,7 +65,7 @@ const refreshAccessToken = async (): Promise<string> => {
 
     try {
         const response = await axios.put<AuthResponse>(
-            `${API_BASE_URL}/auth/token`,
+            `${AUTH_URL}/token`,
             new URLSearchParams({ refresh_token: refreshToken }),
             {
                 headers: {
@@ -84,9 +89,14 @@ apiClient.interceptors.request.use(
         // Log request for debugging
         console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`, config.data);
 
+        // Skip auth endpoints for token refresh logic
+        const isAuthRequest = config.url?.startsWith(AUTH_URL) || config.url?.includes('/auth/');
+        if (isAuthRequest) {
+            return config;
+        }
+
         const token = getToken();
         const expiry = getTokenExpiry();
-        // ... (rest of the interceptor)
 
         // Check if token is about to expire
         if (token && expiry && Date.now() >= expiry) {
@@ -96,20 +106,27 @@ apiClient.interceptors.request.use(
                     const newToken = await refreshAccessToken();
                     isRefreshing = false;
                     onTokenRefreshed(newToken);
-                } catch (error) {
-                    isRefreshing = false;
-                    throw error;
+                } catch (refreshErr) {
+                    onTokenRefreshFailed();
+                    throw refreshErr;
                 }
             }
 
             // Wait for token refresh if in progress
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 subscribeTokenRefresh((newToken: string) => {
                     if (config.headers) {
                         config.headers.Authorization = `Bearer ${newToken}`;
                     }
                     resolve(config);
                 });
+
+                // Set a timeout to prevent absolute deadlock if refresh hangs
+                setTimeout(() => {
+                    if (isRefreshing) {
+                        reject(new Error('Token refresh timeout'));
+                    }
+                }, 10000);
             });
         }
 

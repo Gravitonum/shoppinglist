@@ -24,8 +24,8 @@ code {
   background: #f0f2f5;
 }
 
-/* Smooth transitions */
-* {
+/* Smooth transitions for specific elements instead of all */
+a, .ant-btn, .ant-menu-item {
   transition: all 0.2s ease-in-out;
 }
 

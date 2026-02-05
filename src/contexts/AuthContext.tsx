@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { login as apiLogin, register as apiRegister, logout as apiLogout } from '@/api/auth';
 import { getToken, getTokenExpiry } from '@/api/client';
+import { getUsernameFromToken } from '@/utils/jwt';
+import { appUsersAPI } from '@/api/entities';
 import type { User } from '@/types/entities';
 
 interface AuthContextType {
@@ -30,17 +32,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    const fetchUserByUsername = async (username: string): Promise<User | null> => {
+        try {
+            const users = await appUsersAPI.getAll({ username });
+            if (users && users.length > 0) {
+                return users[0];
+            }
+            return null;
+        } catch (error) {
+            console.error('Failed to fetch user by username:', error);
+            return null;
+        }
+    };
+
     // Check authentication status on mount
     useEffect(() => {
-        const initAuth = () => {
+        const initAuth = async () => {
             const token = getToken();
             const expiry = getTokenExpiry();
 
             if (token && expiry && Date.now() < expiry) {
-                // Token exists and is valid
-                // In a real app, we'd fetch user info from the API
-                // For now, set a placeholder user
-                setUser({ id: 'current-user', email: '', displayName: 'User' });
+                const username = getUsernameFromToken(token);
+                if (username) {
+                    const gravibaseUser = await fetchUserByUsername(username);
+                    if (gravibaseUser) {
+                        setUser(gravibaseUser);
+                    } else {
+                        // Fallback if user not found in AppUser entity yet
+                        setUser({ id: username, username, email: '', displayName: 'User' });
+                    }
+                } else {
+                    setUser({ id: 'current-user', username: 'current-user', email: '', displayName: 'User' });
+                }
             } else {
                 setUser(null);
             }
@@ -54,8 +77,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsLoading(true);
         try {
             await apiLogin(username, password);
-            // After successful login, set user
-            setUser({ id: username, email: username, displayName: username });
+            // After successful login, fetch the actual user record
+            const gravibaseUser = await fetchUserByUsername(username);
+            if (gravibaseUser) {
+                setUser(gravibaseUser);
+            } else {
+                setUser({ id: username, username: username, email: username, displayName: username });
+            }
         } finally {
             setIsLoading(false);
         }
@@ -65,8 +93,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsLoading(true);
         try {
             await apiRegister(username, password, email, displayName);
-            // After successful registration, set user
-            setUser({ id: username, email: email || username, displayName: displayName || username });
+
+            // Get token and extract the "official" username
+            const token = getToken();
+            let finalUsername = username;
+            if (token) {
+                const extracted = getUsernameFromToken(token);
+                if (extracted) {
+                    finalUsername = extracted;
+                }
+            }
+
+            // Create AppUser entity record in GraviBase
+            let createdUser: User | null = null;
+            try {
+                createdUser = await appUsersAPI.create({
+                    username: finalUsername,
+                    email: email,
+                    displayName: displayName || finalUsername
+                });
+            } catch (entityError) {
+                console.error('Failed to create AppUser entity record:', entityError);
+            }
+
+            // After successful registration and entity creation, set user
+            if (createdUser) {
+                setUser(createdUser);
+            } else {
+                setUser({
+                    id: finalUsername,
+                    username: finalUsername,
+                    email: email || finalUsername,
+                    displayName: displayName || finalUsername
+                });
+            }
         } finally {
             setIsLoading(false);
         }
@@ -85,6 +145,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         register,
         logout,
     };
+
+    console.log('AuthProvider: current user state:', user);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
