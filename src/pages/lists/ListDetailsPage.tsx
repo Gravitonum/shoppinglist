@@ -35,7 +35,10 @@ export const ListDetailsPage: React.FC = () => {
     });
 
     // Filter items for this specific list
-    const items = allItems?.filter((item: Item) => item.list === id) || [];
+    const items = allItems?.filter((item: Item) => {
+        const listRef = item.shoppingList as any;
+        return listRef === id || listRef?.id === id;
+    }) || [];
 
     // Toggle item check status
     const toggleMutation = useMutation({
@@ -81,14 +84,15 @@ export const ListDetailsPage: React.FC = () => {
     const createMutation = useMutation({
         mutationFn: (values: any) => {
             if (!id) throw new Error('No ID');
-            return itemsAPI.create({
+            const payload = {
                 title: values.title,
                 quantity: values.quantity,
                 unit: values.unit,
-                // Link to shopping list by ID reference object
-                list: { id: id },
+                shoppingList: { id: id }, // Use new attribute name
                 isChecked: false,
-            });
+            };
+            console.log('Creating Item Payload (Minimal):', payload);
+            return itemsAPI.create(payload);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['items'] });

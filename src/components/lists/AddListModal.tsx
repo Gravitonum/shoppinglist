@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Form, Input } from 'antd';
 import type { ShoppingList } from '@/types/entities';
-import { shoppingListsAPI, usersAPI } from '@/api/entities';
+import { shoppingListsAPI, appUsersAPI } from '@/api/entities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getUsernameFromToken } from '@/utils/jwt';
 
@@ -84,16 +84,27 @@ export const AddListModal: React.FC<AddListModalProps> = ({ visible, onCancel, e
             const username = getUsernameFromToken(token);
             if (!username) throw new Error('Could not extract username from token');
 
-            // 2. Find User entity
-            const allUsers = await usersAPI.getAll();
-            const userEntity = allUsers.find((u: any) => u.username === username);
+            // 2. Find AppUser entity
+            const allUsers: any = await appUsersAPI.getAll();
+            console.log('All AppUsers Response:', allUsers);
+
+            const userList = Array.isArray(allUsers) ? allUsers : (allUsers.content || []);
+            let userEntity = userList.find((u: any) => u.username === username);
 
             if (!userEntity) {
-                // If user doesn't exist (e.g. old registration), create it now? 
-                // Alternatively, error out. For robustness, let's create if missing.
-                console.warn('User entity not found, creating one...');
-                // ... logic to create user if needed, but for now let's just error
-                throw new Error('Пользователь не найден в системе');
+                console.warn(`AppUser entity not found for ${username}, creating new one...`);
+                // Auto-create user if missing
+                try {
+                    userEntity = await appUsersAPI.create({
+                        username: username,
+                        displayName: username, // We used displayName in AppUser
+                        email: undefined
+                    });
+                    console.log('Created new AppUser entity:', userEntity);
+                } catch (createErr) {
+                    console.error('Failed to auto-create AppUser:', createErr);
+                    throw new Error('Пользователь не найден и не удалось создать нового');
+                }
             }
 
             // 3. Format data for API with Owner Reference

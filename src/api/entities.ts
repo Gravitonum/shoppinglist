@@ -58,7 +58,7 @@ import type {
     TemplateItem,
 } from '@/types/entities';
 
-export const usersAPI = createEntityAPI<User>('User');
+export const appUsersAPI = createEntityAPI<User>('AppUser');
 export const shoppingListsAPI = createEntityAPI<ShoppingList>('ShoppingList');
 export const listMembersAPI = createEntityAPI<ListMember>('ListMember');
 export const categoriesAPI = createEntityAPI<Category>('Category');

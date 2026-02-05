@@ -3,7 +3,7 @@ import { Form, Input, Button, Card, Typography, App } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, IdcardOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { usersAPI } from '@/api/entities';
+import { appUsersAPI } from '@/api/entities';
 
 const { Title, Text } = Typography;
 
@@ -24,11 +24,11 @@ export const RegisterPage: React.FC = () => {
         try {
             await register(values.username, values.password, values.email, values.displayName);
 
-            // Create User entity record
-            await usersAPI.create({
+            // Create AppUser entity record (renamed from User)
+            await appUsersAPI.create({
                 username: values.username,
                 email: values.email,
-                name: values.displayName
+                displayName: values.displayName // Note: Check if field name matches backend (we created 'displayName')
             });
 
             message.success('Регистрация успешна!');

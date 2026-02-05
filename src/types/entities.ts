@@ -1,11 +1,11 @@
 // Entity Types mapped from GraviBase backend
 
+// Renamed entity from User to AppUser in backend to avoid reserved words
 export interface User {
     id: string;
-    username?: string;
-    email?: string;
-    name?: string;
+    username: string; // Unique
     displayName?: string;
+    email?: string;
 }
 
 export interface ShoppingList {
@@ -41,7 +41,7 @@ export interface Store {
 
 export interface Item {
     id: string;
-    list?: string | { id: string }; // Reference to ShoppingList ID
+    shoppingList?: string | { id: string }; // Renamed from 'list' to avoid keyword conflicts
     title?: string;
     quantity?: number;
     unit?: string;
