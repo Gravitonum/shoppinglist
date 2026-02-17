@@ -25,7 +25,9 @@ code {
 }
 
 /* Smooth transitions for specific elements instead of all */
-a, .ant-btn, .ant-menu-item {
+a,
+.ant-btn,
+.ant-menu-item {
   transition: all 0.2s ease-in-out;
 }
 
@@ -50,4 +52,82 @@ button {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+
+  /* Improve touch targets for mobile */
+  .ant-btn {
+    min-height: 44px;
+    padding: 8px 16px;
+  }
+
+  /* Better spacing for cards on mobile */
+  .ant-card {
+    margin-bottom: 12px;
+  }
+
+  /* Ensure modals fit on mobile screens */
+  .ant-modal {
+    max-width: calc(100vw - 32px);
+    margin: 16px auto;
+  }
+
+  /* Stack form items on mobile */
+  .ant-form-item {
+    margin-bottom: 16px;
+  }
+
+  /* Adjust title sizes for mobile */
+  h1.ant-typography,
+  .ant-typography h1 {
+    font-size: 24px !important;
+  }
+
+  h2.ant-typography,
+  .ant-typography h2 {
+    font-size: 20px !important;
+  }
+
+  h3.ant-typography,
+  .ant-typography h3 {
+    font-size: 18px !important;
+  }
+
+  h4.ant-typography,
+  .ant-typography h4 {
+    font-size: 16px !important;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 480px) {
+
+  /* Further reduce spacing */
+  .ant-card {
+    border-radius: 8px;
+  }
+
+  .ant-card-body {
+    padding: 12px;
+  }
+
+  /* Smaller buttons on very small screens */
+  .ant-btn-lg {
+    font-size: 14px;
+    height: 40px;
+  }
+}
+
+/* Ensure images and videos are responsive */
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Prevent horizontal scrolling */
+body {
+  overflow-x: hidden;
 }

@@ -34,15 +34,9 @@ export const createEntityAPI = <T>(entityName: string) => {
 
         // Partially update record
         patch: async (data: Partial<T>): Promise<T> => {
-            // "Item" entity requires PATCH to collection URL (backend quirk)
-            if (entityName === 'Item') {
-                const response = await apiClient.patch<T>(`${baseURL}`, data);
-                return response.data;
-            }
-
-            // @ts-ignore - we assume data has id
-            const id = (data as any).id;
-            const response = await apiClient.patch<T>(`${baseURL}/${id}`, data);
+            // Generalizing to use the collection URL for all entities.
+            // The 'data' object is expected to contain the identifier for the record to be patched.
+            const response = await apiClient.patch<T>(baseURL, data);
             return response.data;
         },
 

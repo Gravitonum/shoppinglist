@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, Typography, Button, Table, Checkbox, Tag, Space, Empty, Modal, Form, Input, InputNumber } from 'antd';
 import { PlusOutlined, ArrowLeftOutlined } from '@ant-design/icons';
@@ -14,7 +14,19 @@ export const ListDetailsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const { message: msg } = AntApp.useApp();
+    const { message: msg, modal } = AntApp.useApp();
+    const [isMobile, setIsMobile] = useState(false);
+
+    // Detect mobile screen size
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     // Fetch list details
     const { data: list, isLoading: listLoading } = useQuery({
@@ -22,7 +34,7 @@ export const ListDetailsPage: React.FC = () => {
         queryFn: async () => {
             if (!id) return Promise.reject('No ID');
             const data = await shoppingListsAPI.getById(id);
-            console.log('Shopping List Data:', data); // Log the structure
+            console.log('Shopping List Data:', data);
             return data;
         },
         enabled: !!id,
@@ -43,14 +55,12 @@ export const ListDetailsPage: React.FC = () => {
     // Toggle item check status
     const toggleMutation = useMutation({
         mutationFn: (item: Item) => {
-            // Use patch for partial update (safe, doesn't wipe references)
             return itemsAPI.patch({ id: item.id, isChecked: !item.isChecked });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['items'] });
         },
         onError: (error: any) => {
-            // Workaround for backend 500 error on successful update (serialization issue)
             if (error.response?.status === 500) {
                 queryClient.invalidateQueries({ queryKey: ['items'] });
                 return;
@@ -71,10 +81,9 @@ export const ListDetailsPage: React.FC = () => {
             msg.success('Все товары сброшены');
         },
         onError: (error: any) => {
-            // Workaround for backend 500 error
             if (error.response?.status === 500) {
                 queryClient.invalidateQueries({ queryKey: ['items'] });
-                msg.success('Все товары сброшены'); // Warning removed as requested
+                msg.success('Все товары сброшены');
                 return;
             }
             msg.error('Не удалось сбросить товары');
@@ -94,7 +103,7 @@ export const ListDetailsPage: React.FC = () => {
     });
 
     const handleDelete = (id: string) => {
-        Modal.confirm({
+        modal.confirm({
             title: 'Удалить товар?',
             content: 'Это действие необратимо.',
             okText: 'Удалить',
@@ -121,46 +130,68 @@ export const ListDetailsPage: React.FC = () => {
     const progressPercent = totalItems > 0 ? Math.round((checkedItemsCount / totalItems) * 100) : 0;
 
     const [isModalOpen, setIsModalOpen] = React.useState(false);
+    const [editingItem, setEditingItem] = React.useState<Item | undefined>(undefined);
     const [form] = Form.useForm();
 
-    const createMutation = useMutation({
+    const mutation = useMutation({
         mutationFn: (values: any) => {
             if (!id) throw new Error('No ID');
-            const payload = {
+            const payload: any = {
                 title: values.title,
                 quantity: values.quantity,
                 unit: values.unit,
-                shoppingList: { id: id }, // Must be object reference
-                isChecked: false,
             };
-            console.log('Creating Item Payload (Minimal):', payload);
-            return itemsAPI.create(payload);
+
+            if (editingItem) {
+                return itemsAPI.patch({ ...payload, id: editingItem.id });
+            } else {
+                return itemsAPI.create({
+                    ...payload,
+                    shoppingList: { id: id },
+                    isChecked: false,
+                });
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['items'] });
-            msg.success('Товар добавлен');
+            msg.success(editingItem ? 'Товар обновлен' : 'Товар добавлен');
             setIsModalOpen(false);
+            setEditingItem(undefined);
             form.resetFields();
         },
         onError: (error: any) => {
-            console.error('Create item error:', error);
-            // Workaround for backend 500 error on successful creation (serialization issue)
             if (error.response?.status === 500) {
                 queryClient.invalidateQueries({ queryKey: ['items'] });
-                msg.success('Товар добавлен (Backend Warning)');
+                msg.success(editingItem ? 'Товар обновлен' : 'Товар добавлен');
                 setIsModalOpen(false);
+                setEditingItem(undefined);
                 form.resetFields();
                 return;
             }
 
-            const errorMessage = error.response?.data?.message || 'Не удалось добавить товар';
-            const errorDetail = JSON.stringify(error.response?.data || error.message);
-            msg.error(`${errorMessage}: ${errorDetail}`);
+            const errorMessage = error.response?.data?.message || 'Ошибка при сохранении товара';
+            msg.error(errorMessage);
         },
     });
 
-    const handleAdd = (values: any) => {
-        createMutation.mutate(values);
+    const handleAdd = () => {
+        setEditingItem(undefined);
+        form.resetFields();
+        setIsModalOpen(true);
+    };
+
+    const handleEdit = (item: Item) => {
+        setEditingItem(item);
+        form.setFieldsValue({
+            title: item.title,
+            quantity: item.quantity,
+            unit: item.unit,
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleFinish = (values: any) => {
+        mutation.mutate(values);
     };
 
     const columns = [
@@ -218,14 +249,21 @@ export const ListDetailsPage: React.FC = () => {
         {
             title: '',
             key: 'actions',
-            width: 50,
+            width: 80,
             render: (_: any, record: Item) => (
-                <Button
-                    type="text"
-                    danger
-                    icon={<div style={{ fontSize: '16px' }}>🗑️</div>} // Using emoji as requested/simple icon
-                    onClick={() => handleDelete(record.id)}
-                />
+                <Space>
+                    <Button
+                        type="text"
+                        icon={<div style={{ fontSize: '16px' }}>✏️</div>}
+                        onClick={() => handleEdit(record)}
+                    />
+                    <Button
+                        type="text"
+                        danger
+                        icon={<div style={{ fontSize: '16px' }}>🗑️</div>}
+                        onClick={() => handleDelete(record.id)}
+                    />
+                </Space>
             ),
         },
     ];
@@ -264,11 +302,18 @@ export const ListDetailsPage: React.FC = () => {
                 </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <div style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: isMobile ? 'stretch' : 'center',
+                marginBottom: 24,
+                gap: isMobile ? 16 : 0
+            }}>
                 <Title level={2} style={{ margin: 0 }}>
                     {list?.title || 'Список покупок'}
                 </Title>
-                <Space>
+                <Space style={{ justifyContent: isMobile ? 'center' : 'flex-end' }}>
                     <Button
                         onClick={handleReset}
                         loading={resetMutation.isPending}
@@ -279,16 +324,16 @@ export const ListDetailsPage: React.FC = () => {
                     <Button
                         type="primary"
                         icon={<PlusOutlined />}
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={handleAdd}
                     >
-                        Добавить товар
+                        {isMobile ? 'Добавить' : 'Добавить товар'}
                     </Button>
                 </Space>
             </div>
 
             {items.length === 0 ? (
                 <Empty description="В списке пока нет товаров">
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
                         Добавить первый товар
                     </Button>
                 </Empty>
@@ -298,22 +343,26 @@ export const ListDetailsPage: React.FC = () => {
                     columns={columns}
                     rowKey="id"
                     pagination={false}
+                    scroll={{ x: isMobile ? 'max-content' : undefined }}
                 />
             )}
 
             <Modal
-                title="Добавить товар"
+                title={editingItem ? "Редактировать товар" : "Добавить товар"}
                 open={isModalOpen}
-                onCancel={() => setIsModalOpen(false)}
+                onCancel={() => {
+                    setIsModalOpen(false);
+                    setEditingItem(undefined);
+                }}
                 onOk={() => form.submit()}
-                confirmLoading={createMutation.isPending}
-                okText="Добавить"
+                confirmLoading={mutation.isPending}
+                okText={editingItem ? "Сохранить" : "Добавить"}
                 cancelText="Отмена"
             >
                 <Form
                     form={form}
                     layout="vertical"
-                    onFinish={handleAdd}
+                    onFinish={handleFinish}
                 >
                     <Form.Item
                         name="title"

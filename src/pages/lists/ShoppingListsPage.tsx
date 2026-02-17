@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Button, Empty, Space, Typography, Row, Col, Tag, Modal, message } from 'antd';
+import { Card, Button, Empty, Flex, Typography, Row, Col, Tag, App } from 'antd';
 import {
     PlusOutlined,
     ShoppingOutlined,
@@ -20,7 +20,9 @@ export const ShoppingListsPage: React.FC = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const queryClient = useQueryClient();
+    const { message, modal } = App.useApp();
     const [isCreateModalVisible, setIsCreateModalVisible] = React.useState(false);
+    const [editingList, setEditingList] = React.useState<ShoppingList | undefined>(undefined);
 
     // Fetch shopping lists
     const { data: lists, isLoading } = useQuery({
@@ -42,7 +44,7 @@ export const ShoppingListsPage: React.FC = () => {
     });
 
     const handleDelete = (id: string, title?: string) => {
-        Modal.confirm({
+        modal.confirm({
             title: 'Удалить список?',
             content: `Вы уверены, что хотите удалить "${title || 'этот список'}"?`,
             okText: 'Удалить',
@@ -53,6 +55,12 @@ export const ShoppingListsPage: React.FC = () => {
     };
 
     const handleCreateList = () => {
+        setEditingList(undefined);
+        setIsCreateModalVisible(true);
+    };
+
+    const handleEditList = (list: ShoppingList) => {
+        setEditingList(list);
         setIsCreateModalVisible(true);
     };
 
@@ -102,7 +110,7 @@ export const ShoppingListsPage: React.FC = () => {
                                         key="edit"
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            message.info('Редактирование будет добавлено');
+                                            handleEditList(list);
                                         }}
                                     />,
                                     <DeleteOutlined
@@ -114,7 +122,7 @@ export const ShoppingListsPage: React.FC = () => {
                                     />,
                                 ]}
                             >
-                                <Space direction="vertical" style={{ width: '100%' }}>
+                                <Flex vertical style={{ width: '100%', gap: 8 }}>
                                     <Title level={4} style={{ margin: 0 }}>
                                         {list.title || 'Без названия'}
                                     </Title>
@@ -126,7 +134,7 @@ export const ShoppingListsPage: React.FC = () => {
                                     <Text type="secondary">
                                         Нажмите для просмотра
                                     </Text>
-                                </Space>
+                                </Flex>
                             </Card>
                         </Col>
                     ))}
@@ -135,8 +143,12 @@ export const ShoppingListsPage: React.FC = () => {
 
             <AddListModal
                 visible={isCreateModalVisible}
-                onCancel={() => setIsCreateModalVisible(false)}
+                onCancel={() => {
+                    setIsCreateModalVisible(false);
+                    setEditingList(undefined);
+                }}
                 existingLists={lists || []}
+                listToEdit={editingList}
             />
         </div>
     );

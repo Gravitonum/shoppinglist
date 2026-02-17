@@ -1,4 +1,4 @@
-import { Modal, Form, Input } from 'antd';
+import { Modal, Form, Input, App } from 'antd';
 import React, { useState } from 'react';
 import type { ShoppingList } from '@/types/entities';
 import { shoppingListsAPI } from '@/api/entities';
@@ -9,6 +9,7 @@ interface AddListModalProps {
     visible: boolean;
     onCancel: () => void;
     existingLists: ShoppingList[];
+    listToEdit?: ShoppingList;
 }
 
 const PRESET_COLORS = [
@@ -55,18 +56,49 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({ value, onChange, colors }
     );
 };
 
-export const AddListModal: React.FC<AddListModalProps> = ({ visible, onCancel, existingLists }) => {
+export const AddListModal: React.FC<AddListModalProps> = ({ visible, onCancel, existingLists, listToEdit }) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
     const [loading, setLoading] = useState(false);
     const { user } = useAuth();
+    const { message: msg } = App.useApp();
 
-    const createMutation = useMutation({
-        mutationFn: (data: Partial<ShoppingList>) => shoppingListsAPI.create(data),
+    React.useEffect(() => {
+        if (visible) {
+            if (listToEdit) {
+                form.setFieldsValue({
+                    title: listToEdit.title,
+                    color: listToEdit.color || '#10b981',
+                });
+            } else {
+                form.resetFields();
+            }
+        }
+    }, [visible, listToEdit, form]);
+
+    const mutation = useMutation({
+        mutationFn: (data: Partial<ShoppingList>) => {
+            if (listToEdit) {
+                return shoppingListsAPI.patch({ ...data, id: listToEdit.id });
+            }
+            return shoppingListsAPI.create(data);
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['shoppingLists'] });
+            msg.success(listToEdit ? 'Список обновлен' : 'Список создан');
             form.resetFields();
             onCancel();
+        },
+        onError: (error: any) => {
+            // Workaround for backend 500 error on successful update
+            if (error.response?.status === 500) {
+                queryClient.invalidateQueries({ queryKey: ['shoppingLists'] });
+                msg.success(listToEdit ? 'Список обновлен' : 'Список создан');
+                form.resetFields();
+                onCancel();
+                return;
+            }
+            msg.error(error.response?.data?.message || 'Ошибка при сохранении списка');
         },
         onSettled: () => {
             setLoading(false);
@@ -80,15 +112,17 @@ export const AddListModal: React.FC<AddListModalProps> = ({ visible, onCancel, e
 
             setLoading(true);
 
-            // 3. Format data for API with Owner Reference
             const listData: Partial<ShoppingList> = {
                 title: values.title,
-                color: typeof values.color === 'string' ? values.color : values.color?.toHexString(),
-                position: existingLists.length,
-                owner: { id: user.id } as any // Pass as object reference, not string
+                color: values.color,
             };
 
-            createMutation.mutate(listData);
+            if (!listToEdit) {
+                listData.position = existingLists.length;
+                listData.owner = { id: user.id } as any;
+            }
+
+            mutation.mutate(listData);
         } catch (error) {
             console.error('Operation failed:', error);
             setLoading(false);
@@ -99,7 +133,7 @@ export const AddListModal: React.FC<AddListModalProps> = ({ visible, onCancel, e
         <Modal
             title={
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    Создание нового списка
+                    {listToEdit ? 'Редактирование списка' : 'Создание нового списка'}
                 </div>
             }
             open={visible}
@@ -111,7 +145,9 @@ export const AddListModal: React.FC<AddListModalProps> = ({ visible, onCancel, e
             width={500}
         >
             <p style={{ color: '#6b7280', marginBottom: 24 }}>
-                Создайте новый список для организации покупок.
+                {listToEdit
+                    ? 'Измените параметры списка покупок.'
+                    : 'Создайте новый список для организации покупок.'}
             </p>
 
             <Form
